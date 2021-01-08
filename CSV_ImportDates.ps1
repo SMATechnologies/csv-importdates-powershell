@@ -5,17 +5,22 @@
     -You can use traditional MSGIN functionality or the OpCon API.
     
     Author: Bruce Jernell
-    Version: 1.0
+    Version: 1.1
+
+    * Added delimiter parameter option
+    * Added ability to login rather than requiring application token for OpCon API
+    * Renamed parameters token -> password, extuser -> user for clarity
 #>
 param(
     $path                         # Path to CSV/Text file containing dates
     ,$opconPath                   # Path to OpCon API PS Module
     ,$msginPath                   # Path to MSGIN directory
     ,$url                         # URL for OpCon API
-    ,$token                       # Token for API (including the word "Token XXX-XXXX-....") or the user password/token for MSGIN
+    ,$password                    # User password/token for MSGIN/API
     ,$calendar                    # Name of the calendar to update
-    ,$extUser                     # External user for MSGIN
+    ,$user                        # User for MSGIN/API authentication
     ,$description                 # Description for the new user calendar
+    ,$delimiter                   # Used to specify file delimiter
     ,$option                      # Script option, "apiCreate","apiUpdate","msgin","test"
 )
 
@@ -41,7 +46,7 @@ if(($option -eq "apiCreate") -or ($option -eq "apiUpdate"))
 
     # Adds dates into an array
     $date = New-Object System.Collections.ArrayList
-    gc $path | ForEach-Object{ $date.Add($_) | Out-Null }
+    gc $path -Delimiter $delimiter | ForEach-Object{ $date.Add($_) | Out-Null }
 
     if($date.Count -gt 0)
     {
@@ -52,13 +57,25 @@ if(($option -eq "apiCreate") -or ($option -eq "apiUpdate"))
         else 
         { OpCon_IgnoreSelfSignedCerts }
 
-        # Calls the OpCon API to update the calendar
-        if($option -eq "apiUpdate")
-        { OpCon_UpdateCalendar -url $url -token $token -name $calendar -date $date }
+        try
+        {
+            # Authenticate to the OpCon API
+            $token = "Token " + (OpCon_Login -url $url -user $user -password $password).id
 
-        # Calls the OpCon API to create the calendar
-        if($option -eq "apiCreate")
-        { OpCon_CreateCalendar -url $url -token $token -name $calendar -dates $date -description $description -type 1 }
+            # Calls the OpCon API to update the calendar
+            if($option -eq "apiUpdate")
+            { OpCon_UpdateCalendar -url $url -token $token -name $calendar -date $date }
+
+            # Calls the OpCon API to create the calendar
+            if($option -eq "apiCreate")
+            { OpCon_CreateCalendar -url $url -token $token -name $calendar -dates $date -description $description -type 1 }
+        }
+        catch [Exception]
+        {
+            Write-Host $_
+            Write-Host $_.Exception.Message
+            Exit 100
+        }
     }
 }
 elseif($option -eq "msgin")
@@ -80,21 +97,19 @@ elseif($option -eq "msgin")
     }    
 
     # Builds a variable with the dates delimited
-    $date = ""
-    gc $path | ForEach-Object{ $date = $date + $_ + ";" }
-    $date = $date.TrimEnd(";")
+    gc $path -delimiter $delimiter | ForEach-Object{ $date = $date + $_.Replace($delimiter,"") + ";" } 
+    $date = $date.TrimEnd(";") 
 
     # Creates an event file containing the dates and places it in the MSGIN directory
     # Does not check for existing/duplicates
-    "`$CALENDAR:ADD,$calendar,$date,$extUser,$token" | Out-File -FilePath ($msginPath + "\events$x.txt") -Encoding ascii
+    "`$CALENDAR:ADD,$calendar,$date,$user,$password" | Out-File -FilePath ($msginPath + "\event.txt") -Encoding ascii
 }
 elseif($option = "test")
 {
     # Outputs dates found in a delimited format to the output
     # Does NOT make any changes inside of OpCon
-    $date = ""
-    gc $path | ForEach-Object{ $date = $date + $_ + ";" }
-    $date = $date.TrimEnd(";")
+    gc $path -delimiter $delimiter | ForEach-Object{ $date = $date + $_.Replace($delimiter,"") + ";" } 
+    $date = $date.TrimEnd(";") 
     $date | Out-Host
 }
 else
