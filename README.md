@@ -12,14 +12,15 @@ Imports dates from a CSV file into an OpCon calendar.  The script supports doing
 * opconPath - [optional] Path to the OpCon API PS module
 * msginPath - [optional] Path to the MSGIN folder
 * url - [optional] URL to the OpCon API
-* token - OpCon API token or password/token for MSGIN
+* password - MSGIN/OpCon API user password/token
 * calendar - Name of the calendar to update or create
-* extuser - [optional] Name of the user for MSGIN
+* user - Name of the user for MSGIN/OpCon API authentication
 * description - [optional] Description for the new calendar
+* delimiter - Delimiter for the csv file
 * option - apiCreate, apiUpdate, msgin, test (for verifying the dates are correctly pulled from the CSV file)
 
 ```
-powershell -ExecutionPolicy Bypass -File ".\CSV_ImportDates.ps1" -path "C:\dates.csv" -msginPath "C:\Program Files\OpConxps\SAM\MSGIN" -extuser "myUser" -token "12345" -calendar "Process XYZ"
+powershell -ExecutionPolicy Bypass -File ".\CSV_ImportDates.ps1" -path "C:\dates.csv" -msginPath "C:\Program Files\OpConxps\SAM\MSGIN" -user "myUser" -password "12345" -calendar "Process XYZ" -delimiter ","
 ```
 
 # Disclaimer
